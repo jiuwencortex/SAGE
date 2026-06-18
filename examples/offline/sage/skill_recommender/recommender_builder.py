@@ -37,7 +37,7 @@ from pathlib import Path
 from typing import Literal
 
 from .recommender_similarities_computer import Backend
-from .scores_matrix import load_scores_matrix
+from .reccmmender_scores_matrix import load_scores_matrix
 from .recommender import SkillRecommender
 
 

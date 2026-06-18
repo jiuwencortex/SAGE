@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .recommender_similarities_computer import Embedder, Backend
-from .scores_matrix import norm_columns, metric_columns
+from .reccmmender_scores_matrix import norm_columns, metric_columns
 
 
 class SkillRecommender:

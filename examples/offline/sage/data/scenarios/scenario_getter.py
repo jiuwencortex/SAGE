@@ -132,26 +132,18 @@ def _load_scenarios() -> Dict[str, Scenario]:
         SKILL_BODY as _GS_BODY
     from examples.offline.sage.data.scenarios.gsm8k.skill.frontmatter import \
         SKILL_FRONTMATTER as _GS_FM
-    from examples.offline.sage.data.scenarios.gsm8k.golden_examples.all import \
-        GOLDEN_EXAMPLES as _GS_EXAMPLES
     from examples.offline.sage.data.scenarios.hotpotqa.skill.body import \
         SKILL_BODY as _HP_BODY
     from examples.offline.sage.data.scenarios.hotpotqa.skill.frontmatter import \
         SKILL_FRONTMATTER as _HP_FM
-    from examples.offline.sage.data.scenarios.hotpotqa.golden_examples.all import \
-        GOLDEN_EXAMPLES as _HP_EXAMPLES
     from examples.offline.sage.data.scenarios.pubmedqa.skill.body import \
         SKILL_BODY as _PM_BODY
     from examples.offline.sage.data.scenarios.pubmedqa.skill.frontmatter import \
         SKILL_FRONTMATTER as _PM_FM
-    from examples.offline.sage.data.scenarios.pubmedqa.golden_examples.all import \
-        GOLDEN_EXAMPLES as _PM_EXAMPLES
     from examples.offline.sage.data.scenarios.aquarat.skill.body import \
         SKILL_BODY as _AQ_BODY
     from examples.offline.sage.data.scenarios.aquarat.skill.frontmatter import \
         SKILL_FRONTMATTER as _AQ_FM
-    from examples.offline.sage.data.scenarios.aquarat.golden_examples.all import \
-        GOLDEN_EXAMPLES as _AQ_EXAMPLES
     from examples.offline.sage.data.scenarios.gsm8k.golden_examples.hf_loader import \
         load as _GS_LOADER
     from examples.offline.sage.data.scenarios.hotpotqa.golden_examples.hf_loader import \
@@ -229,7 +221,7 @@ def _load_scenarios() -> Dict[str, Scenario]:
             name="gsm8k",
             skill_body=_GS_BODY,
             skill_frontmatter=_GS_FM,
-            golden_examples=_GS_EXAMPLES,
+            golden_examples=[],
             description="GSM8K grade-school math — step-by-step reasoning chain (OPRO, DSPy benchmark)",
             loader=_GS_LOADER,
             oracle_builder=lambda d, n, ow: _gsm8k_oracle(d, n_examples=n, overwrite=ow),
@@ -243,7 +235,7 @@ def _load_scenarios() -> Dict[str, Scenario]:
             name="hotpotqa",
             skill_body=_HP_BODY,
             skill_frontmatter=_HP_FM,
-            golden_examples=_HP_EXAMPLES,
+            golden_examples=[],
             description="HotPotQA multi-hop QA — chain-of-thought over two supporting facts (DSPy benchmark)",
             loader=_HP_LOADER,
             oracle_builder=lambda d, n, ow: _hp_oracle(d, n_examples=n, overwrite=ow),
@@ -257,7 +249,7 @@ def _load_scenarios() -> Dict[str, Scenario]:
             name="pubmedqa",
             skill_body=_PM_BODY,
             skill_frontmatter=_PM_FM,
-            golden_examples=_PM_EXAMPLES,
+            golden_examples=[],
             description="PubMedQA biomedical QA — yes/no/maybe verdict with evidence (SkillGen benchmark)",
             loader=_PM_LOADER,
             oracle_builder=lambda d, n, ow: _pm_oracle(d, n_examples=n, overwrite=ow),
@@ -271,7 +263,7 @@ def _load_scenarios() -> Dict[str, Scenario]:
             name="aquarat",
             skill_body=_AQ_BODY,
             skill_frontmatter=_AQ_FM,
-            golden_examples=_AQ_EXAMPLES,
+            golden_examples=[],
             description="AQuA-RAT algebra word problems — full working + correct option letter (OPRO benchmark)",
             loader=_AQ_LOADER,
             oracle_builder=lambda d, n, ow: _aq_oracle(d, n_examples=n, overwrite=ow),

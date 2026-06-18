@@ -4,15 +4,34 @@
 Dataset : openai/gsm8k  (main config, test split — 1,319 examples)
 Paper   : OPRO arXiv:2309.03409, DSPy arXiv:2310.03714
 
-Dataset fetching is delegated to ``skill_recommender.gsm8k_loader.fetch_rows``
+Dataset fetching is delegated to ``data_loaders.gsm8k_loader.fetch_rows``
 to avoid duplicating HuggingFace loading logic.
 
-The ``answer`` field already contains the full chain-of-thought ending with
-``#### <number>``, so it is used verbatim as ``expected_behavior``.
+``expected_behavior`` is the chain-of-thought answer with calculator
+annotations (``<<expr=N>>``) stripped, ending with ``#### <number>``.
+
+Difficulty is derived from the number of arithmetic steps in the raw
+answer (count of ``<<`` tokens before cleaning):
+  0-1 steps → easy  |  2-3 → medium  |  4+ → hard
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List
+
+
+def _clean_answer(raw: str) -> str:
+    """Strip ``<<expr=N>>`` calculator annotations from a GSM8K answer."""
+    return re.sub(r"<<[^>]+>>", "", raw).strip()
+
+
+def _step_difficulty(raw: str) -> str:
+    steps = raw.count("<<")
+    if steps <= 1:
+        return "easy"
+    if steps <= 3:
+        return "medium"
+    return "hard"
 
 
 def load(n: int = 50, seed: int = 42) -> List[Dict[str, Any]]:
@@ -25,15 +44,13 @@ def load(n: int = 50, seed: int = 42) -> List[Dict[str, Any]]:
     seed:
         Random seed for reproducible sampling.
     """
-    from examples.offline.sage.data.data_loaders.gsm8k_loader import (
-        fetch_rows,
-    )
+    from examples.offline.sage.data.data_loaders.gsm8k_loader import fetch_rows
 
     return [
         {
             "task_input": row["question"],
-            "expected_behavior": row["answer"],
-            "difficulty": "unknown",
+            "expected_behavior": _clean_answer(row["answer"]),
+            "difficulty": _step_difficulty(row["answer"]),
             "source": "gsm8k-hf",
         }
         for row in fetch_rows(n=n, seed=seed)

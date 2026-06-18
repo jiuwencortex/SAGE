@@ -6,9 +6,10 @@ so the runner can select any pair by name.
 """
 from __future__ import annotations
 
+import random as _random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -51,8 +52,8 @@ class Scenario:
     name: str
     skill_body: str
     skill_frontmatter: str
-    golden_examples: List[Dict[str, Any]]
     description: str = ""
+    golden_examples: List[Dict[str, Any]] = field(default_factory=list)
     loader: Optional[Callable[..., List[Dict[str, Any]]]] = field(default=None, repr=False)
     oracle_builder: Optional[Callable[..., Path]] = field(default=None, repr=False)
     oracle_skill_name: Optional[str] = None
@@ -106,19 +107,54 @@ class Scenario:
             )
         return self.oracle_builder(oracle_dir, n_examples, overwrite)
 
-    def example_counts(self) -> Dict[str, int]:
-        """Return a dict mapping difficulty label → count."""
+    def split(
+        self,
+        n: int = 50,
+        seed: int = 42,
+        train_ratio: float = 0.8,
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Load examples and split into (trainset, valset).
+
+        Parameters
+        ----------
+        n:
+            Number of examples to load (passed to ``load_examples``).
+        seed:
+            Random seed used both for loading and for the shuffle.
+        train_ratio:
+            Fraction of examples to place in the training set.
+            The remainder goes to the validation set.
+
+        Returns
+        -------
+        (trainset, valset)  — both are lists of example dicts.
+        """
+        examples = self.load_examples(n=n, seed=seed)
+        shuffled = list(examples)
+        _random.Random(seed).shuffle(shuffled)
+        cut = max(1, int(len(shuffled) * train_ratio))
+        return shuffled[:cut], shuffled[cut:]
+
+    def example_counts(self, n: int = 50, seed: int = 42) -> Dict[str, int]:
+        """Return a dict mapping difficulty label → count.
+
+        Calls ``load_examples(n, seed)`` so works for both static and HF scenarios.
+        """
         counts: Dict[str, int] = {}
-        for ex in self.golden_examples:
+        for ex in self.load_examples(n=n, seed=seed):
             d = ex.get("difficulty", "unknown")
             counts[d] = counts.get(d, 0) + 1
         return counts
 
-    def summary_line(self) -> str:
-        counts = self.example_counts()
+    def summary_line(self, n: int = 50, seed: int = 42) -> str:
+        examples = self.load_examples(n=n, seed=seed)
+        counts = {}
+        for ex in examples:
+            d = ex.get("difficulty", "unknown")
+            counts[d] = counts.get(d, 0) + 1
         parts = " / ".join(
             f"{counts.get(d, 0)} {d}"
             for d in ("easy", "medium", "hard")
             if counts.get(d, 0)
         )
-        return f"{self.name}  —  {len(self.golden_examples)} examples ({parts})"
+        return f"{self.name}  —  {len(examples)} examples ({parts})"

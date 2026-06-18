@@ -13,8 +13,8 @@ TRUNCATE   : max chars per field before truncating (None = no truncation)
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 
-SCENARIO           = "smarthub-support"   # ← change this
-N_EXAMPLES         = 10
+SCENARIO           = "hotpotqa"   # ← change this
+N_EXAMPLES         = 10000
 SEED               = 42
 SHOW_SKILL         = True
 MAX_EXAMPLES_SHOWN = 3

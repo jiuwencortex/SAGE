@@ -15,7 +15,7 @@ from examples.offline.sage.data.scenarios.hf.data_loaders import fetch_rows as _
 from examples.offline.sage.data.scenarios.hf.data_loaders import fetch_rows as _pubmedqa_rows, load_pubmedqa_to_oracle
 from examples.offline.sage.data.scenarios.hf.aquarat.aquarat_loader import fetch_rows as _aquarat_rows, load_aquarat_to_oracle
 from examples.offline.sage.data.scenarios.hf.data_loaders import load_bbh_to_oracle, DEFAULT_TASKS as _BBH_DEFAULT_TASKS
-from examples.offline.sage.data.scenarios.hf.gsm8k.golden_examples.hf_loader import load as _gsm8k_examples
+from examples.offline.sage.data.scenarios.hf.gsm8k.hf_loader import load as _gsm8k_examples
 from examples.offline.sage.data.scenarios.hf.hotpotqa import load as _hotpotqa_examples
 from examples.offline.sage.data.scenarios.hf.pubmedqa import load as _pubmedqa_examples
 from examples.offline.sage.data.scenarios.hf.aquarat import load as _aquarat_examples

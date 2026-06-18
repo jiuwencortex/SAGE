@@ -144,13 +144,13 @@ def _load_scenarios() -> Dict[str, Scenario]:
         SKILL_BODY as _AQ_BODY
     from examples.offline.sage.data.scenarios.hf.aquarat.skill.frontmatter import \
         SKILL_FRONTMATTER as _AQ_FM
-    from examples.offline.sage.data.scenarios.hf.gsm8k.golden_examples.hf_loader import \
+    from examples.offline.sage.data.scenarios.hf.gsm8k.hf_loader import \
         load as _GS_LOADER
-    from examples.offline.sage.data.scenarios.hf.hotpotqa.golden_examples.hf_loader import \
+    from examples.offline.sage.data.scenarios.hf.hotpotqa.hf_loader import \
         load as _HP_LOADER
-    from examples.offline.sage.data.scenarios.hf.pubmedqa.golden_examples.hf_loader import \
+    from examples.offline.sage.data.scenarios.hf.pubmedqa.hf_loader import \
         load as _PM_LOADER
-    from examples.offline.sage.data.scenarios.hf.aquarat.golden_examples.hf_loader import \
+    from examples.offline.sage.data.scenarios.hf.aquarat.hf_loader import \
         load as _AQ_LOADER
 
     return {

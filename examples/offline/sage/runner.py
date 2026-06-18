@@ -112,7 +112,7 @@ if __name__ == "__main__":
             skill_name=scenario.name,
             skill_body=scenario.skill_body,
             skill_frontmatter=scenario.skill_frontmatter,
-            golden_examples=scenario.golden_examples,
+            golden_examples=scenario.load_examples(),
             workdir=workdir,
         )
 

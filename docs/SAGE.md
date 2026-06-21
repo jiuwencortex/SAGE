@@ -9,7 +9,7 @@
 
 Production agentic systems do not rewrite their own skills. When an agent fails, the standard response is episodic annotation: a failure record is appended to the skill's log and retrieved in future conversations, injecting compensatory guidance into the context window without touching the underlying instruction text. This workaround scales gracefully — until it doesn't. We name the structural ceiling it creates **Structural Semantic Stagnation**: the skill body text *S* is frozen at creation time, and no mechanism in an episodic system ever modifies it. As failure records accumulate, the context window fills with compensatory history, the base instruction's effective weight in prediction degrades, and the defect in *S* that generated every one of those records remains unaddressed. The cost of not fixing the skill grows indefinitely with every new failure.
 
-**SAGE** (Skill-Adaptive Genetic Evolution) is the production-grade evolutionary optimizer built to close this gap. It takes the population-based evolutionary search architecture of GEPA — the strongest existing foundation for macro skill optimization — and rebuilds every component of the optimization loop for production deployment. SAGE's measurement apparatus is a seven-metric fitness family calibrated to the actual failure modes of enterprise skills: where lexical overlap metrics are paraphrase-blind, order-blind, and structure-blind, SAGE measures semantic equivalence, graph structure, format compliance, entity accuracy, and instruction adherence independently. Its evaluation architecture enforces a per-dimension no-regression constraint — no candidate deploys if any quality dimension has regressed, regardless of aggregate score improvement — closing the structural vulnerability that makes both localized editing and scalar evolutionary optimization dangerous in production. Its intelligence layer applies Thompson Sampling at three decision levels — skill scheduler, training example selector, and Bayesian acceptance gate — transforming SAGE from a stateless optimizer into a system that learns which skills reward optimization, which training examples expose real weaknesses, and how much confidence the current evidence warrants before authorizing a change. This paper establishes the complete theoretical foundation and design rationale for each of these decisions: the definitive architectural specification for a system trusted with unsupervised authority over production skill rewriting.
+**SAGE** (Skill-Adaptive Genetic Evolution) is the production-grade evolutionary optimizer built to close this gap. It takes the population-based evolutionary search architecture of GEPA — the strongest existing foundation for macro skill optimization — and rebuilds every component of the optimization loop for production deployment. SAGE's measurement apparatus is a seven-metric fitness family calibrated to the actual failure modes of enterprise skills: where lexical overlap metrics are paraphrase-blind, order-blind, and structure-blind, SAGE measures semantic equivalence, graph structure, format compliance, entity accuracy, and instruction adherence independently. Its evaluation architecture enforces a per-dimension no-regression constraint — no candidate deploys if any quality dimension has regressed, regardless of aggregate score improvement — closing the structural vulnerability that makes both localized editing and scalar evolutionary optimization dangerous in production. Its intelligence layer applies Thompson Sampling at three optimization decision levels — skill scheduler, training example selector, and Bayesian acceptance gate — transforming SAGE from a stateless optimizer into a system that learns which skills reward optimization, which training examples expose real weaknesses, and how much confidence the current evidence warrants before authorizing a change. A fourth decision level, the Contextual Bayesian Prompt-Skill Router, closes the offline-to-online loop: it fuses the offline evolutionary evidence — arm posteriors, static scoring matrix, temporal freshness — with live execution signals — per-skill exponentially weighted context embeddings and an online prompt–skill utility matrix — into a single normalised routing score, enabling the system to route incoming queries to the best-matched skill and refine that routing continuously without re-running the evolution pipeline. This paper establishes the complete theoretical foundation and design rationale for each of these decisions: the definitive architectural specification for a system trusted with unsupervised authority over production skill rewriting.
 
 ---
 
@@ -23,7 +23,7 @@ The architecturally obvious response is to target ∂*Q*/∂*S* directly — to 
 
 Macro-level evolutionary approaches escape the locality constraint entirely. Rather than patching specific sentences in response to specific failure signals, they synthesize entirely new skill structures through population-based search, multi-agent generative pipelines, or co-evolution of skill content and multi-agent routing topology — producing structural improvements that no bounded edit could reach. They represent a genuine architectural advance. They also share a structural vulnerability that prevents their deployment in enterprise production: every framework in this class is calibrated against scalar academic benchmarks where a binary signal captures what matters. In enterprise production environments, quality cannot be compressed into a single scalar metric. An evolutionary rewrite that improves a task-completion proxy may simultaneously violate brand-mandated tone-of-voice constraints, produce output that fails the JSON schemas required by downstream API consumers, introduce hallucinations on input distributions underrepresented in the training set, or silently relax procedural compliance constraints that are legally required. None of these failures are visible to a scalar fitness function. **The Production Trust Gap** is the structural consequence: macro evolutionary search cannot earn production authorization when the fitness apparatus cannot see the full behavioral surface of the skill it is optimizing.
 
-**SAGE** (Skill-Adaptive Genetic Evolution) is the production-grade Layer 3 engine built to close both gaps. It takes the population-based evolutionary search architecture — the only approach with the structural scope to produce genuine parametric improvements — and wraps it in the production apparatus the prior landscape has been unable to provide. Its seven-metric fitness family measures what actually fails in production: semantic equivalence, graph structure, format compliance, entity accuracy, and instruction adherence — not vocabulary overlap. Its regression-aware holdout architecture enforces a hard per-dimension no-regression constraint: no candidate deploys if any quality dimension has regressed, regardless of aggregate score improvement, making The Regression Trap structurally impossible. Its three-level Thompson Sampling intelligence layer — Beta-Bernoulli skill scheduler, training example selector, and Bayesian acceptance gate — transforms SAGE from a stateless optimizer into a system that learns from its own run history: concentrating effort where optimization produces results, selecting training examples that expose real weaknesses, and calibrating confidence before authorizing a change. SAGE does not treat every optimization run as the first. It does not deploy to production when its measurement apparatus cannot see what matters. And it does not accept a candidate that looks better overall while becoming worse at what the skill was built to do.
+**SAGE** (Skill-Adaptive Genetic Evolution) is the production-grade Layer 3 engine built to close both gaps. It takes the population-based evolutionary search architecture — the only approach with the structural scope to produce genuine parametric improvements — and wraps it in the production apparatus the prior landscape has been unable to provide. Its seven-metric fitness family measures what actually fails in production: semantic equivalence, graph structure, format compliance, entity accuracy, and instruction adherence — not vocabulary overlap. Its regression-aware holdout architecture enforces a hard per-dimension no-regression constraint: no candidate deploys if any quality dimension has regressed, regardless of aggregate score improvement, making The Regression Trap structurally impossible. Its three-level Thompson Sampling intelligence layer — Beta-Bernoulli skill scheduler, training example selector, and Bayesian acceptance gate — transforms SAGE from a stateless optimizer into a system that learns from its own run history: concentrating effort where optimization produces results, selecting training examples that expose real weaknesses, and calibrating confidence before authorizing a change. Its Contextual Bayesian Prompt-Skill Router closes the offline-to-online loop: it fuses the evolutionary evidence accumulated during batch optimization with live execution feedback to route each incoming query to the best-matched skill, updating continuously without re-running the evolution pipeline. SAGE does not treat every optimization run as the first. It does not deploy to production when its measurement apparatus cannot see what matters. It does not accept a candidate that looks better overall while becoming worse at what the skill was built to do. And it does not route traffic blindly after deployment — it learns where each skill performs best from every live execution it observes.
 
 This paper makes the following contributions:
 
@@ -31,6 +31,7 @@ This paper makes the following contributions:
 - **A Multi-Dimensional Measurement Apparatus (§4.3):** A seven-metric production fitness family — `f1`, `rouge_l`, `semantic`, `graph`, `format`, `ner` — designed from first principles to evaluate the structural, semantic, and formatting requirements that lexical overlap metrics are constitutionally blind to.
 - **A Regression-Aware Evaluation Architecture (§4.4):** A seven-mode holdout framework with adaptive dimension weighting and hard per-dimension no-regression gates that make The Regression Trap structurally impossible.
 - **An Adaptive Optimization Intelligence Layer (§4.5):** A three-level Thompson Sampling architecture that tracks optimization yields across historical runs to dynamically allocate optimization budgets, select high-signal training examples, and govern candidate acceptance with calibrated Bayesian uncertainty.
+- **A Contextual Bayesian Prompt-Skill Router (§4.6):** A five-component online routing algorithm that fuses offline evolutionary evidence — Bayesian arm posteriors, freshness decay, collaborative matrix scores — with live execution signals — per-skill exponentially weighted context embeddings, online prompt–skill utility matrix — into a single normalised routing score, closing the loop between offline batch optimization and online traffic routing without re-running the evolution pipeline.
 
 Section 2 reviews the theoretical foundations. Section 3 maps the skill adaptability landscape as a connected architectural argument. Section 4 presents SAGE's design. Section 5 discusses theoretical limitations. Section 6 defines the empirical evaluation methodology. Section 7 concludes.
 
@@ -106,23 +107,7 @@ In production, this assumption does not hold. A macro evolutionary rewrite that 
 
 **SAGE** is not a Layer 4. It is the production-grade instantiation of Layer 3 — evolutionary macro optimization equipped with the apparatus the entire prior landscape has been unable to provide. Its seven-metric fitness family measures what actually fails in production: lexical coverage, semantic equivalence, graph structure, format compliance, entity accuracy. Its regression-aware holdout architecture makes The Regression Trap structurally impossible: no evolved skill deploys if any quality dimension has regressed, regardless of aggregate score. Its Thompson Sampling intelligence layer learns from accumulated run evidence — which skills reward optimization, which examples expose real weaknesses, how much confidence the evidence warrants — so that each run builds on the last rather than starting from zero. When SAGE accepts an evolved skill, every dimension has been independently verified. When SAGE deploys to production, **The Production Trust Gap is closed.** The entire landscape, read as a connected argument, converges here.
 
-**Reference summary — systems and frameworks discussed in §3:**
-
-| System / Framework | Paradigm | Pathway | Key vulnerability |
-|---|---|---|---|
-| JiuwenSwarm: SER, TSER, ES, EXS | Episodic accumulation | ∂*Q*/∂*R* | **Episodic Compensation Load** |
-| MUSE-Autoskill [Lin et al., 2026] | Lifecycle episodic management | ∂*Q*/∂*R* + test-gated ∂*Q*/∂*S* | Context bloat; scalar test gate |
-| OpenClaw: Autocapture, Workshop, Skill Creator | Correction-driven parametric append / operator authoring | ∂*Q*/∂*S* local | **The Regression Trap** (unverified append) |
-| Hermes: BackgroundReviewRail | Schedule-driven direct edit | ∂*Q*/∂*S* local | **The Regression Trap** (no verification gate) |
-| JiuwenSwarm: SkillDev IMPROVE | User-guided iterative rewrite | ∂*Q*/∂*S* local | **The Regression Trap** (test loop, not multi-dimensional holdout) |
-| SkillOpt [Zhu et al., 2026] | Bounded local optimization | ∂*Q*/∂*S* local | **The Regression Trap** (held-out split, scalar) |
-| SkillEvolver [Zhang et al., 2026] | Contrastive patch + 9-check auditor | ∂*Q*/∂*S* local | **The Regression Trap** (9-check audit, not multi-dimensional regression gate) |
-| EvoSkill [Alzubi et al., 2026] | Failure-driven macro synthesis | ∂*Q*/∂*S* macro | **The Production Trust Gap** (top-K scalar admission) |
-| SkillGen [Ma et al., 2026] | Causal intervention synthesis | ∂*Q*/∂*S* macro | **The Production Trust Gap** (repair/regression balance on benchmark) |
-| SkillMAS [Pan et al., 2026] | Skill + MAS co-evolution | ∂*Q*/∂*S* macro | **The Production Trust Gap** (co-evolution on benchmark metrics) |
-| Skill-MAS [Lin et al., 2026] | Evolvable Meta-Skill for orchestration | ∂*Q*/∂*S* macro | **The Production Trust Gap** (scalar benchmark; requires ground-truth labels) |
-| Hermes: GEPA | Evolutionary search (production prototype) | ∂*Q*/∂*S* macro | Both Trust Gap + Regression Trap (bag-of-words + holistic scalar) |
-| **SAGE** (this work) | Production-grade evolutionary optimization | ∂*Q*/∂*S* macro | — |
+A complete reference summary mapping all 20 surveyed systems to their paradigm, pathway, and structural vulnerability is provided in Table A.1 (Appendix A).
 
 ---
 
@@ -221,33 +206,9 @@ The table below maps each metric to its diagnostic target and the specific failu
 | `graph` | Concept-graph node and edge structural overlap | Semantic scattering: all required terms present, but relational structure between them severed |
 | `format` | Structural marker match ratio | Structural output degradation when format is traded away for lexical fluency |
 
-**`bag_of_words` ($f_{\text{bow}}$) — GEPA's deployed baseline.** This is the metric GEPA ships with: token-overlap over lowercased, stop-word-filtered sets, with a floor that prevents zero-score stalls during early, highly divergent generations. It is retained as the default because it requires no external libraries and provides a real signal. It is not wrong. It is blind:
+Full metric definitions, equation derivations, and computational parameters — including the exact recall/precision weighting coefficients, graph window size, and floor values — are provided in Appendix B.
 
-$$f_{\text{bow}} = \max\!\left(0.3,\ 0.7 \times \frac{|T_{\text{expected}} \cap T_{\text{output}}|}{|T_{\text{expected}}|}\right)$$
-
-**Asymmetric Content Balance ($f_{\text{f1}}$).** Implements a recall-biased content word matching function across stop-word-filtered sets. By heavily favoring recall over precision, SAGE directly forces the optimization loop to maintain instruction coverage while penalizing excessive verbosity or token-stuffing:
-
-$$f_{\text{f1}} = 0.7 \times \frac{|T_{\text{exp}} \cap T_{\text{out}}|}{|T_{\text{exp}}|} + 0.3 \times \frac{|T_{\text{exp}} \cap T_{\text{out}}|}{|T_{\text{out}}|}$$
-
-**Factual Domain Coverage ($f_{\text{ner}}$).** Computes asymmetric recall/precision exclusively over named entity classes (organizations, technical parameters, location attributes, dates), ensuring that critical specific references are preserved across extensive skill rewrites. The recall-bias mirrors $f_{\text{f1}}$: the rubric defines the entities the agent must mention; the operator defines their class:
-
-$$f_{\text{ner}} = 0.7 \times \text{Recall}_{\text{NER}} + 0.3 \times \text{Precision}_{\text{NER}}$$
-
-**Sequential Sequence Alignment ($f_{\text{rouge}}$).** Enforces strict procedural ordering by extracting the Longest Common Subsequence (LCS) of tokens. For skills governing sequential state machines or linear multi-step procedures, any deviation in execution order sharply degrades $f_{\text{rouge}}$, preserving deterministic step sequence logic:
-
-$$f_{\text{rouge}} = \frac{2 \cdot \text{Recall}_{\text{LCS}} \cdot \text{Precision}_{\text{LCS}}}{\text{Recall}_{\text{LCS}} + \text{Precision}_{\text{LCS}}}$$
-
-**Paraphrastic Invariance ($f_{\text{sem}}$).** Projects outputs into a dense vector space using a unified embedding encoder and computes the normalized directional similarity. This ensures that semantic correctness is fully captured even when the evolved skill uses entirely novel vocabulary or restructured prose, bypassing the rigid constraints of surface-level string matching:
-
-$$f_{\text{sem}} = \frac{\cos(\mathbf{e}_{\text{expected}},\ \mathbf{e}_{\text{output}}) + 1}{2}$$
-
-**Relational Co-location ($f_{\text{graph}}$).** Constructs a conceptual graph $G = (V, E)$ for both target and hypothesis texts. Nodes $V$ consist of unigrams and domain-specific bigrams; directed edges $E$ are instantiated for concepts co-occurring within a strict sliding window of 5 tokens. This metric addresses **semantic scattering** — a failure mode where an agent drops all required terms into a response but entirely severs the causal or structural connections between them:
-
-$$f_{\text{graph}} = 0.6 \times f_{\text{f1}}(V) + 0.4 \times \frac{|E_{\text{expected}} \cap E_{\text{output}}|}{|E_{\text{expected}} \cup E_{\text{output}}|}$$
-
-**Syntactic Enforcement ($f_{\text{fmt}}$).** Evaluates structural output morphology by matching explicit document markers (Markdown headers, pipe tables, code blocks, valid JSON schemas). This metric operates orthogonally to textual content, ensuring that skills driving downstream programmatic dependencies do not degrade structural formatting in pursuit of lexical fluency:
-
-$$f_{\text{fmt}} = \frac{|M_{\text{expected}} \cap M_{\text{output}}|}{|M_{\text{expected}}|}$$
+SkillAxe [Gautam et al., 2026] identifies a complementary diagnostic dimension not captured by SAGE's seven-metric family: *trigger precision* — whether the skill activates on inputs it is designed for and suppresses on inputs it should not handle. Their empirical results attribute a 28% relative improvement share to fixing trigger conditions rather than skill body content, suggesting that trigger correctness is a distinct failure class orthogonal to content quality, ordering, format, and entity coverage. SAGE's current fitness family evaluates the quality of skill outputs given that the skill has already been invoked; trigger evaluation would require a separate held-out corpus of negative examples where the correct behavior is non-activation. We identify this as a natural extension target for a future eighth metric.
 
 Because the metric space transformation alters the target coordinate plane, any runtime modification to the selector vector $\mathbf{w}$ by an operator executes an automatic cascading invalidation of the current population's fitness history. SAGE forces a comprehensive re-evaluation epoch under the newly selected metric before tournament selection resumes, preventing structural cross-contamination of legacy score profiles from a prior coordinate space.
 
@@ -291,6 +252,8 @@ Regardless of which evaluation mode is active, all seven modes produce a unified
 
 To maintain complete structural isolation between inner-loop optimization and final verification, all seven evaluation modes run exclusively over a segregated holdout dataset split containing unseen conversational traces that did not participate in the mutation cycle. This prevents the Bayesian Acceptance Gate from verifying localized optimization artifacts or proxy-cheating behaviors developed during inner-loop reflection — ensuring that a high $\mathcal{G}$ score reflects generalized capability, not fitness memorization.
 
+The requirement for ground-truth labels to run any of SAGE's holdout modes is a known structural dependency. SkillAudit [Gao et al., 2026] proposes a convergent approach — paired execution with and without the candidate skill, followed by Process-Aligned Contrastive Evaluation of trajectory differences — that operates without reference outputs entirely. Their empirical evaluation across 89 containerized professional tasks demonstrates that contrastive trajectory comparison is a viable substitute for labeled holdout evaluation when ground-truth outputs are unavailable. SAGE's seven holdout modes and SkillAudit's label-free approach are not competing proposals for the same deployment context: SAGE operates where ground-truth holdout data exists and multi-dimensional regression visibility is required; SkillAudit operates where labels are absent. Both share the conviction that scalar holistic scoring is insufficient as a deployment gate.
+
 The `rubrics` mode introduces two cross-run mechanisms that apply only when it is selected as the active evaluation mode.
 
 #### Adaptive Dimension Weighting
@@ -307,7 +270,7 @@ The primary mechanism of **The Regression Trap** is the optimization trade-off: 
 
 $$\text{Reject } S_{\text{candidate}} \quad \text{if } \exists\, d \in \mathbf{D} :\ \left( M_d(S_{\text{candidate}}) - M_d(S_{\text{baseline}}) \right) < -0.02$$
 
-This gate ensures that an overall score increase can never mask a regression in procedural compliance, schema enforcement, or security boundaries. An evolved skill that gains completeness at the cost of instruction compliance does not deploy. **The Regression Trap is closed.**
+This gate ensures that an overall score increase can never mask a regression in procedural compliance, schema enforcement, or security boundaries. An evolved skill that gains completeness at the cost of instruction compliance does not deploy. **The Regression Trap is closed.** ASSAY [Wang et al., 2026] offers a complementary causal verification approach: randomized skill masking on held-out examples measures per-skill causal attribution, identifying the specific input subset for which a candidate skill is harmful rather than helpful in aggregate. Where SAGE's per-dimension constraint detects *what quality aspect* regressed, ASSAY's masking identifies *which input distribution* the skill hurts — the two mechanisms provide orthogonal diagnostic coverage and are composable as sequential gates.
 
 ### 4.5 The Intelligence Layer: Thompson Sampling at Three Levels
 
@@ -324,6 +287,12 @@ The system selects the skill maximizing $\theta_k$ for the next evolutionary cyc
 $$(\alpha_k,\ \beta_k) \leftarrow \begin{cases} (\alpha_k + 1,\ \beta_k), & \text{if } S_{\text{candidate}} \text{ passes holdout evaluation} \\ (\alpha_k,\ \beta_k + 1), & \text{if } S_{\text{candidate}} \text{ is rejected by holdout gate} \end{cases}$$
 
 This structure forces the system to automatically deprecate stagnant assets and concentrate resource allocation on highly responsive skill documents.
+
+As a fractional extension, the integer increments can be replaced by a reward-scaled *soft update*:
+
+$$(\alpha_k,\ \beta_k) \leftarrow (\alpha_k + r,\; \beta_k + (1 - r))$$
+
+where $r \in [0,1]$ is a continuous reward signal (e.g., normalised improvement score). The soft update accommodates borderline outcomes — a candidate that improves some rubric dimensions while regressing on others accumulates partial evidence in both directions rather than forcing a binary success/failure classification. Both the binary and soft update rules are conjugate updates to the Beta-Bernoulli model; the soft variant generalises the binary rule in the limit $r \in \{0,1\}$.
 
 #### Level 2: Training Trajectory Discrimination
 
@@ -351,31 +320,69 @@ $$P(S_{\text{candidate}} > S_{\text{baseline}}) \ge 0.75$$
 
 When evidence is highly volatile or holdout dimensions exhibit high variance, the gate naturally tightens, forcing a structural fallback to the safe baseline asset. SAGE does not deploy changes it is not confident in.
 
+Two concurrent lines of work address the acceptance gate from different statistical families. PACE [Shawn, 2026] replaces the fixed-sample Monte Carlo estimator with *testing-by-betting* — an e-process sequential hypothesis test that accumulates evidence across multiple evaluation rounds without a fixed sample commitment, with provable control over the false-positive rate under repeated testing. PACE's empirical evaluation reports a 30–42% reduction in false-improvement commitments relative to naive threshold gating, at the cost of requiring variable and potentially larger evaluation sets. The SAGE gate occupies a different point on the efficiency–correctness tradeoff: $M = 100$ fixed draws provide a predictable computational budget and adequate false-positive suppression for the majority of enterprise optimization scenarios; PACE's sequential design is the appropriate choice when budgets are elastic and the cost of a false acceptance is exceptionally high. Bayesian-Agent [Xu et al., 2026] proposes a feature-conditioned categorical posterior as a generalization of the Beta-Bernoulli arm that conditions scheduling decisions on input context features — a structural extension compatible with SAGE's Level 1 scheduler that would enable context-sensitive optimization budgeting rather than per-skill aggregate budgeting.
+
 #### Beyond Optimization: Porting Learned Priors to Online Routing
 
 The $(\alpha, \beta)$ distributions accumulated across Level 1 and Level 2 do not expire when the offline optimization run concludes. They represent the system's learned empirical confidence in its own assets — and they are directly portable into a live production routing layer, transitioning SAGE from an offline batch optimizer into a continuously self-refining runtime.
 
-**Online Dynamic Skill Routing (Level 1 Posteriors).** When multiple variations of a skill coexist in production, the Level 1 posterior distributions replace static traffic routing. For each incoming request, the production router draws $\theta_k \sim \text{Beta}(\alpha_k, \beta_k)$ for each available skill variation and routes to the maximizing arm. Live telemetry closes the loop: a successful session increments $\alpha_k$; a failure or dropout increments $\beta_k$. The optimization phase seeds the initial routing weights; the production environment continuously refines them.
+An important semantic boundary applies throughout this section: the Level 1 arms track **optimization yield per skill** — how reliably a given skill responds to evolutionary improvement — and the Level 2 arms track **trace informativeness** — which training examples expose real weaknesses. When ported to the production runtime, these signals govern *variant-level* decisions: which of two or more co-existing evolved versions of the *same skill* to serve a given request. This is categorically distinct from the *query-to-skill* selection problem — which skill from a catalog is most appropriate for an incoming query — which is addressed by the Contextual Bayesian Prompt-Skill Router (§4.6). The Level 1 arms encode how good a skill has become through optimization; §4.6 encodes where in the prompt distribution a skill performs best.
 
-**Runtime Trace Discriminators and Failure Fallbacks (Level 2 Posteriors).** The Level 2 distributions track which input context types yield successful outcomes. Online, each incoming prompt is mapped to its nearest historical trace cluster $i$. When the cluster's posterior mean $\frac{\alpha_i}{\alpha_i + \beta_i}$ falls below an operator-defined risk threshold (e.g., $0.40$), the runtime classifies the input as high-risk for the evolved skill and routes it to the conservative $S_{\text{baseline}}$ instead:
+The $(\alpha, \beta)$ state matrices are serialized into the deployment payload alongside `SKILL.md` files, so SAGE arrives in production with a mathematically precise empirical map of its own strengths and failure boundaries. Full operational deployment patterns — Level 1 variant traffic allocation, Level 2 high-risk fallback with configurable posterior-mean threshold, and canary allocation mechanics — are detailed in Appendix C.
 
-```
-Incoming User Input
-       │
-       ▼
-[Context Vector Encoder] ──► Matches Cluster Registry (Trace i)
-                                         │
-                                         ▼
-                             Draw Sample: φ_i ~ Beta(α_i, β_i)
-                                         │
-                 ┌───────────────────────┴───────────────────────┐
-                 ▼ φ_i ≥ 0.40                                    ▼ φ_i < 0.40 (High Risk Zone)
-      [Execute Evolved Skill]                         [Activate Safe Baseline Fallback]
-```
+### 4.6 The Contextual Bayesian Prompt-Skill Router
 
-**Exploitation vs. Exploration in Production.** Operators can choose between two runtime postures. For strict production exploitation, the sampling step is replaced by the deterministic posterior mean $\mu_k = \frac{\alpha_k}{\alpha_k + \beta_k}$, routing all traffic to the highest-performing skill variant with zero variance. For controlled canary testing, the sampling is preserved: a highly successful skill with a tight distribution such as $\text{Beta}(95, 5)$ will naturally capture $\approx 95\%$ of production traffic while a new or volatile variant is automatically throttled to a safe canary allocation — with no manual percentage configuration required.
+The online routing mechanism described in §4.5 — drawing $\theta_k \sim \text{Beta}(\alpha_k, \beta_k)$ and routing to the maximizing skill — addresses the question of *which skill variant to serve* given that the correct skill for the query is already known. The prior selection problem — *which skill* among many candidates is most appropriate for an incoming query — is addressed by a static scoring matrix derived from offline GEPA runs. These two components operate independently: the matrix determines skill relevance; the posterior refines confidence among variants of the selected skill.
 
-By serializing the $(\alpha, \beta)$ state matrices into the deployment payload alongside `SKILL.md` files, SAGE passes its learned confidence directly to the runtime. The system does not enter production blind; it arrives with a mathematically precise empirical map of its own strengths and failure boundaries.
+SAGE unifies both signals into a single **Contextual Bayesian Prompt-Skill Router** that computes, for each skill $S_i$ and incoming query $P$, a normalised routing score $r(S_i, P) \in [0,1]$ that fuses up to five evidence streams across three activation phases:
+
+**Phase 0 — Offline Collaborative Score (always active).** The static 3-D scoring matrix $M$ stores, for each (skill, fitness metric, example input) triple, the normalised evolutionary fitness score from GEPA runs. For query $P$, the collaborative score is the similarity-weighted average:
+
+$$f_{\text{collab}}(S_i, P) = \frac{\displaystyle\sum_{j \in \mathcal{N}(P)} \text{sim}(P,\, x_j)\cdot M[S_i,\, x_j]}{\displaystyle\sum_{j \in \mathcal{N}(P)} \text{sim}(P,\, x_j)}$$
+
+where $\mathcal{N}(P)$ is the set of corpus examples with cosine similarity above threshold $\delta$, and $\text{sim}(\cdot,\cdot)$ is computed against TF-IDF or dense (OpenAI) embeddings.
+
+**Phase 1 — Bayesian Exploitation and Exploration (active when $(\alpha_i, \beta_i)$ state exists).** The Level 1 $(\alpha_i, \beta_i)$ arms accumulated during offline skill scheduling encode the historical improvability of each skill. Two derived signals are extracted:
+
+$$\mu_i = \frac{\alpha_i}{\alpha_i + \beta_i} \qquad \text{(posterior mean — exploitation)}$$
+
+$$\tilde{\theta}_i \sim \text{Beta}(\alpha_i,\, \beta_i) \qquad \text{(posterior sample — exploration)}$$
+
+The exploitation signal routes toward skills with a strong track record of improvement; the exploration signal maintains allocation to skills with high uncertainty even when their posterior mean is modest.
+
+**Phase 2 — Temporal Freshness (active when $\lambda > 0$, requires Phase 1).** Evidence accumulated across optimization runs degrades in relevance as the skill evolves. A freshness decay factor discounts the Bayesian signal by the time elapsed since the arm last received a positive update:
+
+$$\tau_i = \exp\!\left(-\lambda \cdot \Delta t_i\right)$$
+
+where $\Delta t_i$ is the number of days since the last successful optimization run for skill $S_i$, and $\lambda \in \mathbb{R}_{>0}$ is the decay rate (default $\lambda = 0.05$, corresponding to a half-life of approximately 14 days). Skills that have not been optimized recently are penalized toward neutrality; unexplored skills receive $\tau_i = 1.0$ (no penalty).
+
+**Phase 3 — Adaptive Context Embeddings and Online Collaborative Matrix (active when execution feedback is available).** Unlike the static scoring matrix, which captures offline optimization quality, Phase 3 captures *live deployment utility*. Two online data structures are maintained:
+
+*Per-skill context embedding* $\mathbf{e}_{S_i} \in \mathbb{R}^d$: a running exponentially weighted average of the query embeddings on which skill $S_i$ has been executed, weighted by the soft reward received:
+
+$$\mathbf{e}_{S_i} \leftarrow \frac{(1 - \eta_r)\,\mathbf{e}_{S_i} + \eta_r\,\hat{P}}{\|(1 - \eta_r)\,\mathbf{e}_{S_i} + \eta_r\,\hat{P}\|_2}, \qquad \eta_r = \eta_0 \cdot r$$
+
+where $\hat{P}$ is the L2-normalised query embedding, $r \in [0,1]$ is the observed reward, and $\eta_0$ is the base EWA rate. The context match score is the cosine similarity between the incoming query and the skill's accumulated context:
+
+$$f_{\text{ctx}}(S_i, P) = \langle \hat{P},\, \mathbf{e}_{S_i} \rangle \in [0, 1]$$
+
+For skills with no recorded context embedding — freshly deployed or never executed since Phase 3 was activated — $f_{\text{ctx}}(S_i, P) = 0.5$ (neutral prior), ensuring cold-start skills are neither promoted nor penalised relative to skills with established embeddings. The embedding is not initialised until the first execution with non-zero reward, so premature context pull from low-quality executions is avoided.
+
+*Online prompt–skill utility matrix* $\mathcal{M}$: a rolling buffer of at most $N = 1\,000$ observed $(\hat{P},\, S_i,\, r)$ triples (default; configurable), with oldest entries evicted when the buffer reaches capacity. The online collaborative score for skill $S_i$ given query $P$ is the top-$k$ similarity-weighted reward:
+
+$$f_{\text{online}}(S_i, P) = \frac{\displaystyle\sum_{j \in \text{top-}k(S_i, P)} \text{sim}(\hat{P},\, \hat{P}_j)\cdot r_j}{\displaystyle\sum_{j \in \text{top-}k(S_i, P)} \text{sim}(\hat{P},\, \hat{P}_j)}$$
+
+**Fusion.** The five active components are fused into a single normalised routing score:
+
+$$r(S_i, P) = \frac{\displaystyle\sum_{c \in \mathcal{A}} w_c\, v_c(S_i, P)}{\displaystyle\sum_{c \in \mathcal{A}} w_c}$$
+
+where $\mathcal{A} \subseteq \{f_{\text{collab}},\, \mu_i,\, \tilde{\theta}_i,\, \tau_i,\, f_{\text{ctx}},\, f_{\text{online}}\}$ is the set of active components and $\{w_c\}$ are their relative weights. The normalisation ensures $r(S_i, P) \in [0,1]$ regardless of which phases are active, so that disabling a phase does not shrink the effective score range. Default weights are $w_{\text{collab}} = 0.35$, $w_{\mu} = 0.20$, $w_{\tilde\theta} = 0.15$, $w_\tau = 0.10$, $w_{\text{ctx}} = 0.15$, $w_{\text{online}} = 0.05$. The skill with the highest $r(S_i, P)$ is selected for routing.
+
+These default weights are empirically calibrated starting points, not values derived from the Thompson Sampling theoretical framework. Their relative magnitudes reflect the expected information quality ordering: the offline collaborative score ($f_{\text{collab}}$) draws on the richest evidence base (all GEPA evaluation runs); the online collaborative signal ($f_{\text{online}}$) is most data-sparse and is therefore assigned the lowest weight. The exact values should be treated as tunable hyperparameters, with Study 8 (§6) providing the controlled empirical basis for validation or adjustment. The $\tau_i$ freshness component is deliberately decoupled from the Thompson Sampling exploitation/exploration structure: it is a monotone temporal penalty on evidence recency, not an uncertainty signal — including it in the exploration arm would conflate recency with epistemic uncertainty, which are distinct quantities.
+
+**Feedback loop.** After the selected skill executes and produces an observable outcome, the soft reward $r \in [0,1]$ is recorded: the per-skill context embedding $\mathbf{e}_{S_i}$ and the online matrix $\mathcal{M}$ are updated online from live traffic; the Level 1 $(\alpha_i, \beta_i)$ arms remain exclusively offline-updated (via `record_soft`) to preserve the integrity of the optimization scheduling signal. Both $\mathbf{e}_{S_i}$ and $\mathcal{M}$ are persisted to disk after each update, enabling the routing layer to accumulate evidence continuously across deployments without requiring re-optimization.
+
+The router degrades gracefully: on a fresh deployment with no execution history, only Phase 0 is active and $r(S_i, P) = f_{\text{collab}}(S_i, P)$ — identical to the existing static matrix recommender. Phases 1 and 2 activate automatically when the offline optimization pipeline has produced $(\alpha_i, \beta_i)$ state. Phase 3 activates as live execution feedback accumulates. No configuration is required to transition between phases.
 
 ---
 
@@ -449,41 +456,23 @@ $$\text{Provenance Log} = \left\{ S_{\text{parent\_hash}},\ S_{\text{child\_hash
 
 This metadata maps the complete lineage of structural transformations, the deterministic fitness signatures that authorized the deployment, and the exact historical execution traces that forced the optimization path. By matching this lineage directly to standard semantic versioning control systems, the hosting platform can treat automated prompt updates exactly like programmatic code assets — enabling instant rollback triggers the moment live runtime exceptions violate global operational boundaries.
 
+### 5.6 Level 1 Arm Signal Repurposing and Evidence Heterogeneity
+
+The Level 1 $(\alpha_k, \beta_k)$ arms are accumulated during **offline batch optimization**: $\alpha_k$ increments when SAGE's evolutionary search produces an accepted improvement for skill $k$; $\beta_k$ increments when the search fails to produce an acceptable candidate. These counts encode *optimization yield* — how reliably skill $k$ responds to evolutionary mutation pressure — not *query routing quality* — how well skill $k$ handles a specific incoming prompt distribution.
+
+When the Contextual Bayesian Prompt-Skill Router (§4.6) ports these arms into the online routing layer as Phase 1 signals, it introduces a semantic mismatch: the exploitation signal $\mu_i = \alpha_i / (\alpha_i + \beta_i)$ and exploration sample $\tilde\theta_i \sim \text{Beta}(\alpha_i, \beta_i)$ are treated as evidence about skill quality for routing, yet they were accumulated from an optimization context with different selection pressures, different input distributions, and potentially different evaluation criteria. A skill with a high $\mu_i$ may be *easily improvable by GEPA* rather than *well-matched to user queries*; these are not the same property.
+
+The `apply_decay(rate)` mechanism (which shrinks $\alpha$ and $\beta$ symmetrically toward the prior over time) partially mitigates this problem by reducing the influence of stale optimization evidence. However, it does not eliminate the fundamental semantic gap between optimization yield and routing quality. The Phase 3 online data structures — the per-skill context embeddings $\mathbf{e}_{S_i}$ and the online prompt–skill utility matrix $\mathcal{M}$ — accumulate evidence from actual routing executions and progressively dilute the Phase 1 signal's influence as they mature; Study 8 (§6) proposes the empirical measurement of this transition. Until Phase 3 has accumulated sufficient live execution signal, operators should treat the Phase 1 contribution as a warm-start prior rather than a calibrated routing confidence.
+
 ---
 
-## 6. Evaluation Methodology and Future Work
+## 6. Evaluation Methodology
 
-This paper establishes the theoretical justification and design rationale for SAGE. Empirical validation is pending. For each proposed study we define the **success criterion** — the threshold at which the experimental hypothesis is considered confirmed.
+This paper establishes the theoretical justification and design rationale for SAGE. Empirical validation is pending. Full study designs, metrics, and statistical success criteria are provided in Appendix D.
 
-**Study 1: Baseline validation.**
-*Design:* A/B evaluation on ≥50 real task inputs per skill, comparing (a) unoptimized skills, (b) episodic-only skills (SER/TSER), and (c) baseline GEPA-optimized skills, and (d) SAGE-optimized skills (full system).
-*Metrics:* Task success rate (binary human judgment), episodic retrieval count per conversation, and rubric regression rate.
-*Success criterion:* GEPA-optimized skills achieve mean task success rate ≥ 10 percentage points above unoptimized baseline with zero mean regression on any rubric dimension. Secondary: mean episodic retrieval count decreases for GEPA-optimized skills, confirming that GEPA reduces episodic compensation load.
+Eight studies are planned, organized around SAGE's four core contributions. **Studies 1–3** validate the primary claim: SAGE-optimized skills outperform unoptimized, episodic-only, and baseline GEPA skills on task success rate and rubric regression rate across ≥50 real task inputs per skill (Study 1); each fitness metric outperforms bag-of-words on its target skill category with p < 0.05 and the no-regression constraint produces a statistically significant reduction in post-deployment regressions (Study 2); trajectory-mode optimization achieves strictly lower generalization gap than synthetic-mode for domain-specific skills (Study 3). **Study 4** validates the adaptive dimension weighting mechanism by measuring whether cross-run weight updates correlate (r > 0.5) with human-judged dimension importance across five rubric dimensions. **Study 5** tests the episodic consolidation hypothesis: accepted SAGE-evolved skills should allow ≥20% of episodic records to be pruned without measurable task success regression, confirming that parametric improvement reduces Episodic Compensation Load. **Study 6** positions SAGE against SkillOpt-style directed local optimization across five skill categories at equal LLM call budgets, testing the complementarity hypothesis that neither paradigm dominates across all categories.
 
-**Study 2: Component ablations.**
-*Design:* Controlled ablations measuring the marginal contribution of each fitness metric (§4.3) and each holdout mode (§4.4) against bag-of-words + holistic baseline across five skill categories (procedural, advisory, entity-dense, structured-output, conversational).
-*Metrics:* Mean per-skill task success improvement, rubric regression rate, and holistic holdout acceptance rate.
-*Success criterion:* Each fitness metric outperforms bag-of-words on its target skill category with p < 0.05 (paired t-test). The no-regression constraint produces a statistically significant reduction in post-deployment rubric regressions compared to holistic-only evaluation.
-
-**Study 3: Trajectory vs. synthetic comparison.**
-*Design:* Direct comparison of trajectory mode vs. synthetic mode on the same holdout test set for skills with ≥ 100 real conversation logs.
-*Metrics:* Holdout improvement score, generalization gap (|holdout score − test score|), failure rate on unseen task variants.
-*Success criterion:* Trajectory mode achieves strictly lower generalization gap than synthetic mode for domain-specific skills.
-
-**Study 4: Adaptive weight diagnostics.**
-*Design:* Multi-run analysis over 10+ consecutive GEPA runs on the same skill, correlating final adaptive weights with human-judged dimension importance.
-*Metrics:* Pearson correlation between adaptive weight and human-judged importance; convergence rate.
-*Success criterion:* Final adaptive weights are positively correlated (r > 0.5) with human-judged dimension importance in ≥4 of 5 dimensions.
-
-**Study 5: Consolidation study.**
-*Design:* GEPA in trajectory mode on skills with ≥ 200 accumulated experience records; measure whether accepted skills allow episodic record reduction without regression.
-*Metrics:* Post-consolidation episodic retrieval count, task success rate before and after pruning.
-*Success criterion:* Accepted GEPA-evolved skills allow removal of ≥ 20% of episodic records without measurable task success regression (< 2 percentage points).
-
-**Study 6: SAGE vs. directed optimization benchmark.**
-*Design:* Controlled comparison of SAGE against SkillOpt-style directed local optimization across the five task classes, with equal total LLM call budgets.
-*Metrics:* Final task success rate, iterations to first accepted improvement, post-acceptance regression rate, structural change magnitude (incremental vs. architectural).
-*Success criterion:* GEPA produces higher structural change magnitude and task success rates for procedural and structured-output classes; directed optimization achieves faster time-to-first-improvement for advisory and conversational classes. Neither paradigm dominates across all five categories, validating the complementarity hypothesis.
+**Studies 7–8** validate the two novel statistical components. Study 7 conducts a head-to-head comparison between SAGE's Monte Carlo Bayesian acceptance gate ($M = 100$, $P \ge 0.75$) and PACE's anytime-valid e-process testing-by-betting [Shawn, 2026], measuring false-acceptance rate, false-rejection rate, and evaluation call cost across five skill categories — the outcome determines whether the Bayesian gate is validated as the enterprise default or superseded by PACE's sequential design. Study 8 is a 90-day longitudinal A/B comparison of static-matrix routing (Phase 0 only) against the full Contextual Bayesian Router (Phases 0–3), measuring whether live execution feedback yields a routing accuracy gain of ≥5 percentage points by day 60 and whether per-skill context embeddings converge within 30 days of deployment.
 
 ---
 
@@ -495,52 +484,9 @@ We set out to build the evolutionary skill optimizer that production systems nee
 
 That system is **SAGE**. It is not GEPA with patches. It is what we believed evolutionary skill optimization could be, designed systematically, and built.
 
-The ecosystem of agent self-improvement now has three distinct, non-redundant layers. Each does something the others cannot:
+Beyond the optimization pipeline itself, SAGE closes a loop that prior frameworks leave open: the evidence accumulated during offline batch evolution does not disappear when the training run ends. The Contextual Bayesian Prompt-Skill Router (§4.6) ports that evidence — the $(\alpha_i, \beta_i)$ arm posteriors, the static scoring matrix, and the temporal freshness signal — into a live production routing layer, and continuously refines it with per-skill context embeddings and an online utility matrix updated from real execution feedback. The result is a system that does not merely *produce* better skills offline and then deploy them blindly; it *routes intelligently* from the first request and *learns continuously* which skill is best matched to each region of the prompt distribution. Offline evolutionary quality and online routing intelligence are not separate concerns — in SAGE they are the same loop, measured coherently, running at different timescales.
 
-<details>
-<summary>ASCII — three-layer production stack</summary>
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  LAYER 3 — SAGE  (periodic structural revision: monthly / quarterly)     │
-│  Rewrites skill body text S using evolutionary search + fitness signals  │
-│  Addresses: ∂Q/∂S  |  Cost: ~500 LLM calls/run  |  Mode: offline batch  │
-├──────────────────────────────────────────────────────────────────────────┤
-│  LAYER 2 — SkillOpt  (continuous directed maintenance: per-epoch)        │
-│  Applies bounded edits guided by execution trajectory failures           │
-│  Addresses: ∂Q/∂S  |  Cost: lightweight  |  Mode: continuous online      │
-├──────────────────────────────────────────────────────────────────────────┤
-│  LAYER 1 — SER / TSER / EXS  (reactive episodic: per conversation)       │
-│  Appends failure records; retrieved at inference time                    │
-│  Addresses: ∂Q/∂R  |  Cost: minimal  |  Mode: real-time                  │
-└──────────────────────────────────────────────────────────────────────────┘
-             ↑ All three layers operate on the same skill artifact
-             ↑ No layer substitutes for another; all are additive
-```
-
-</details>
-
-<details>
-<summary>Mermaid — three-layer production stack</summary>
-
-```mermaid
-flowchart TB
-    subgraph L3["LAYER 3 — SAGE  (periodic structural revision: monthly / quarterly)"]
-        L3D["Rewrites skill body text S via evolutionary search + fitness signals\n∂Q/∂S  |  ~500 LLM calls/run  |  offline batch"]
-    end
-    subgraph L2["LAYER 2 — SkillOpt  (continuous directed maintenance: per-epoch)"]
-        L2D["Applies bounded edits guided by execution trajectory failures\n∂Q/∂S  |  lightweight  |  continuous online"]
-    end
-    subgraph L1["LAYER 1 — SER / TSER / EXS  (reactive episodic: per conversation)"]
-        L1D["Appends failure records; retrieved at inference time\n∂Q/∂R  |  minimal cost  |  real-time"]
-    end
-    L3 --> L2 --> L1
-    N["All three layers operate on the same skill artifact\nNo layer substitutes for another — all are additive"]
-    L1 --- N
-    style N fill:#f5f5f5,stroke:#aaa,stroke-dasharray:5 5
-```
-
-</details>
+The ecosystem of agent self-improvement now has three distinct, non-redundant layers, each addressing what the others cannot: Layer 1 captures failures episodically at conversation granularity (∂*Q*/∂*R*); Layer 2 applies bounded directed corrections to the skill body at per-epoch granularity (∂*Q*/∂*S*, local); Layer 3 — SAGE — performs macro evolutionary revision at periodic structural granularity (∂*Q*/∂*S*, macro). A full annotated diagram of this three-layer stack with cost models and update frequencies is provided as Figure E.1 (Appendix E).
 
 An agent that uses all three does not just cope with its failures. It corrects them, learns from them, and — over time — rewrites itself to stop making them.
 
@@ -564,7 +510,11 @@ The design and deployment of self-evolving agent skill systems surfaces a set of
 
 **8.7 Multi-Objective Pareto Evolution for Prompt Skills.** Real-world deployed skills must satisfy multiple objectives that are often in tension: task accuracy, output safety, latency, cost, and calibration confidence are all legitimate targets, yet optimizing any single one can degrade the others. The rubric-based gate used in systems like SAGE aggregates objectives into a scalar by design, discarding information about the tradeoff structure. A multi-objective evolutionary approach would instead maintain a Pareto frontier of non-dominated candidate skills—skills for which no alternative is superior on all objectives simultaneously—and expose this frontier to a deployment policy that selects the operating point appropriate for each production context. We propose developing a full multi-objective genetic evolution framework for prompt skills, including Pareto-aware selection operators, frontier maintenance algorithms scaled to LLM evaluation latency, and a principled deployment policy parameterized by context-specific objective weights. This direction connects directly to the alignment community's concern with the accuracy–safety tradeoff, to the operations research literature on multi-criteria decision making, and to practical teams who must certify that a new skill version does not regress on safety even as it improves accuracy.
 
-**8.8 Online versus Batch Evolution Dynamics: Stability, Adaptability, and Safeguards.** Deployed skill evolution systems must choose between two fundamentally different update regimes: *batch* evolution, in which traces are accumulated over a fixed window, the evolution loop runs offline, and a new skill version is deployed after passing a gate; and *online* evolution, in which the skill is updated continuously from live traffic with minimal latency between observation and incorporation. Batch evolution is stable but slow to adapt to distribution shift; online evolution adapts rapidly but introduces feedback instability risks, including the possibility of runaway self-reinforcement of early errors. No empirical study has systematically measured this stability–adaptability tradeoff across task types and traffic regimes, nor proposed principled safeguards—such as drift detectors, rollback triggers, or gradient-clipping analogues for prompt updates—that make online evolution safe in production. We propose a controlled experimental framework that varies update frequency, window size, and gate strictness, measures the time-to-adaptation and the variance of deployed quality over time, and derives design rules for choosing between regimes. The findings would be directly actionable for every team operating a continuously improving LLM system.
+**8.8 Online versus Batch Evolution Dynamics: Stability, Adaptability, and Safeguards.** Deployed skill evolution systems must choose between two fundamentally different update regimes: *batch* evolution, in which traces are accumulated over a fixed window, the evolution loop runs offline, and a new skill version is deployed after passing a gate; and *online* evolution, in which the skill is updated continuously from live traffic with minimal latency between observation and incorporation. Batch evolution is stable but slow to adapt to distribution shift; online evolution adapts rapidly but introduces feedback instability risks, including the possibility of runaway self-reinforcement of early errors.
+
+SAGE's Contextual Bayesian Prompt-Skill Router (§4.6) addresses one dimension of online adaptation without touching the skill body text: Phase 3's per-skill context embeddings and the online prompt–skill utility matrix adapt continuously from live execution feedback, enabling routing quality to improve between batch optimization runs. This constitutes *online routing adaptation* — a tractable, stable form of online learning that operates in the routing layer rather than the parametric skill layer, and that carries no risk of runaway skill body corruption. The open problem stated here is categorically harder: *online semantic evolution* of the skill body text $S$ itself, where the modification target is the parametric content rather than the routing weights, and the feedback instability risks are correspondingly more severe.
+
+No empirical study has systematically measured this stability–adaptability tradeoff for online body-text evolution across task types and traffic regimes, nor proposed principled safeguards — such as drift detectors, rollback triggers, or gradient-clipping analogues for prompt updates — that make online skill body rewriting safe in production. We propose a controlled experimental framework that varies update frequency, window size, and gate strictness, measures the time-to-adaptation and the variance of deployed quality over time, and derives design rules for choosing between regimes. The findings would be directly actionable for every team operating a continuously improving LLM system.
 
 **8.9 Cross-Task Transfer of Evolutionary Progress.** When an agent skill has been refined through many rounds of evolution on one task domain—for instance, a financial document routing skill that has accumulated 50 evolutionary generations of selection pressure—it remains an open question whether that evolutionary history provides useful initialization for evolving a structurally related skill in a different domain, such as medical document routing. If transferable, evolutionary progress could dramatically reduce the number of evaluation cycles required to reach a target quality level on new skills, analogously to how pre-training in deep learning reduces fine-tuning sample complexity. We propose a systematic study of cross-task evolutionary transfer: measuring how many evolution rounds are saved when a target skill is initialized from a source skill versus from scratch, across pairs of skills at varying structural and semantic distances. A central contribution would be the definition of *skill family distance*—a measurable quantity, likely derived from embedding space similarity of the skill prompts, execution trace distributions, or fitness landscape correlation—that predicts transfer quality without requiring the target evolution to be run first. Positive results would open a new research thread on evolutionary pre-training for LLM skills and provide a practical roadmap for multi-skill development teams seeking to amortize evaluation costs across a growing skill portfolio.
 
@@ -589,3 +539,192 @@ The design and deployment of self-evolving agent skill systems surfaces a set of
 - Pan, S., et al. (2026). SkillMAS: Skill Co-Evolution with LLM-based Multi-Agent System. *arXiv:2605.09341*.
 - Lin, H., Yang, Q., & Qin, C. (2026). Skill-MAS: Evolving Meta-Skill for Automatic Multi-Agent Systems. *arXiv:2606.18837*.
 - Lin, H., et al. (2026). MUSE-Autoskill: Self-Evolving Agents via Skill Creation, Memory, Management, and Evaluation. *arXiv:2605.27366*.
+- Shawn, Z. (2026). PACE: Anytime-Valid Sequential Acceptance Testing for Agent Skill Evolution. *arXiv:2606.08106*.
+- Gao, H., Chen, H., Wang, C., Guo, S., Pang, L., Liu, Z., Shen, H., & Cheng, X. (2026). SkillAudit: Ground-Truth-Free Agent Skill Evaluation via Paired Trajectory Auditing. *arXiv:2606.14239*.
+- Wang, Y., Zhou, Y., Liang, Y., Zhang, C., Liu, F., Zhou, J., & Yao, H. (2026). ASSAY: Causal Heterogeneity Measurement for Agent Skill Suppression. *arXiv:2606.15390*.
+- Gautam, S., Radhakrishna, A., & Gulwani, S. (2026). SkillAxe: Four-Dimension Self-Diagnosis for Agent Skills. *arXiv:2606.10546*.
+- Li, Z. & Hu, Y. (2026). SkillHone: Persistent Revision History for Iterative Agent Skill Improvement. *arXiv:2606.08671*.
+- Zhang, G., Xu, X., Yue, Y., Su, Z., Zhou, W., Hu, X., & Yan, S. (2026). OPD-Evolver: Fast/Slow Evolutionary Loop for Agent Skill Maintenance. *arXiv:2606.17628*.
+- Xu, X., et al. (2026). Bayesian-Agent: Feature-Conditioned Categorical Posterior Scheduling for Self-Evolving Agents. *arXiv:2606.08348*.
+- Chen, K., Zhong, Q., Liu, J., & Du, B. (2026). SkillCAT: Contrastive Causal Extraction and Topology-Aware Skill Loading. *arXiv:2606.13317*.
+- Pan, W., Liu, S., Lin, C.-Y., Zeng, J., Tang, X., Zhou, X., Lu, Y., & Jia, X. (2026). RHO: Self-Preference Coreset Evaluation for Agent Skill Refinement. *arXiv:2606.05922*.
+- Liu, Z., et al. (2026). Adaptive Auto-Harness: Evolution and Adaptation Loss Decomposition for Agent Skills. *arXiv:2606.01770*.
+- Xiong, Y., Miao, Z., Chen, Q., Li, L., Wang, Y., He, S., Zhao, J., & Liu, K. (2026). SkillPyramid: Hierarchical Skill Composition for Agent Generalization. *arXiv:2606.03692*.
+
+---
+
+## Appendix
+
+### Appendix A — System Typology Reference Table (Table A.1)
+
+Complete mapping of all surveyed systems and frameworks to their paradigm, skill-adaptation pathway, and structural vulnerability. Referenced from §3.
+
+| System / Framework | Paradigm | Pathway | Key vulnerability |
+|---|---|---|---|
+| JiuwenSwarm: SER, TSER, ES, EXS | Episodic accumulation | ∂*Q*/∂*R* | **Episodic Compensation Load** |
+| MUSE-Autoskill [Lin et al., 2026] | Lifecycle episodic management | ∂*Q*/∂*R* + test-gated ∂*Q*/∂*S* | Context bloat; scalar test gate |
+| OpenClaw: Autocapture, Workshop, Skill Creator | Correction-driven parametric append / operator authoring | ∂*Q*/∂*S* local | **The Regression Trap** (unverified append) |
+| Hermes: BackgroundReviewRail | Schedule-driven direct edit | ∂*Q*/∂*S* local | **The Regression Trap** (no verification gate) |
+| JiuwenSwarm: SkillDev IMPROVE | User-guided iterative rewrite | ∂*Q*/∂*S* local | **The Regression Trap** (test loop, not multi-dimensional holdout) |
+| SkillOpt [Zhu et al., 2026] | Bounded local optimization | ∂*Q*/∂*S* local | **The Regression Trap** (held-out split, scalar) |
+| SkillEvolver [Zhang et al., 2026] | Contrastive patch + 9-check auditor | ∂*Q*/∂*S* local | **The Regression Trap** (9-check audit, not multi-dimensional regression gate) |
+| EvoSkill [Alzubi et al., 2026] | Failure-driven macro synthesis | ∂*Q*/∂*S* macro | **The Production Trust Gap** (top-K scalar admission) |
+| SkillGen [Ma et al., 2026] | Causal intervention synthesis | ∂*Q*/∂*S* macro | **The Production Trust Gap** (repair/regression balance on benchmark) |
+| SkillMAS [Pan et al., 2026] | Skill + MAS co-evolution | ∂*Q*/∂*S* macro | **The Production Trust Gap** (co-evolution on benchmark metrics) |
+| Skill-MAS [Lin et al., 2026] | Evolvable Meta-Skill for orchestration | ∂*Q*/∂*S* macro | **The Production Trust Gap** (scalar benchmark; requires ground-truth labels) |
+| Hermes: GEPA | Evolutionary search (production prototype) | ∂*Q*/∂*S* macro | Both Trust Gap + Regression Trap (bag-of-words + holistic scalar) |
+| SkillHone [Li & Hu, 2026] | Persistent per-skill revision history across sessions | ∂*Q*/∂*S* local | **The Regression Trap** (no multi-dimensional holdout; session history only) |
+| Bayesian-Agent [Xu et al., 2026] | Feature-conditioned categorical posterior skill scheduling | ∂*Q*/∂*S* macro | **The Production Trust Gap** (scalar acceptance; no multi-dimensional regression gate) |
+| SkillAxe [Gautam et al., 2026] | Four-dimension self-diagnosis (quality, trigger, compliance, coverage) | ∂*Q*/∂*S* macro | **The Production Trust Gap** (scalar aggregate; no per-dimension no-regression constraint) |
+| SkillAudit [Gao et al., 2026] | Ground-truth-free evaluation via paired with/without-skill execution | ∂*Q*/∂*S* macro | **The Production Trust Gap** (contrastive scalar; no multi-dimensional holdout) |
+| OPD-Evolver [Zhang et al., 2026] | Fast/slow evolutionary loop split (directed maintenance + structural rewrite) | ∂*Q*/∂*S* macro | **The Production Trust Gap** (benchmark scalar; no per-dimension regression gate) |
+| PACE [Shawn, 2026] | Anytime-valid e-process acceptance testing (testing-by-betting) | ∂*Q*/∂*S* macro | **The Production Trust Gap** (rigorous single-metric gate; no multi-dimensional decomposition) |
+| SkillCAT [Chen et al., 2026] | Contrastive causal extraction + topology-aware skill loading | ∂*Q*/∂*S* macro | **The Production Trust Gap** (training-free; scalar benchmark validation) |
+| **SAGE** (this work) | Production-grade evolutionary optimization | ∂*Q*/∂*S* macro | — |
+
+---
+
+### Appendix B — Fitness Metric Definitions
+
+Full definitions, equation derivations, and computational parameters for the seven fitness functions in $\mathcal{F}$. Referenced from §4.3.
+
+**`bag_of_words` ($f_{\text{bow}}$) — GEPA's deployed baseline.** Token-overlap over lowercased, stop-word-filtered sets, with an additive floor of 0.3 that prevents zero-score stalls during early, highly divergent generations. It is retained as the default because it requires no external libraries and provides a real signal. It is not wrong. It is blind:
+
+$$f_{\text{bow}} = \min\!\left(1.0,\ 0.3 + 0.7 \times \frac{|T_{\text{expected}} \cap T_{\text{output}}|}{|T_{\text{expected}}|}\right)$$
+
+**Asymmetric Content Balance ($f_{\text{f1}}$).** Implements a recall-biased content word matching function across stop-word-filtered sets. By heavily favoring recall over precision, SAGE directly forces the optimization loop to maintain instruction coverage while penalizing excessive verbosity or token-stuffing:
+
+$$f_{\text{f1}} = 0.7 \times \frac{|T_{\text{exp}} \cap T_{\text{out}}|}{|T_{\text{exp}}|} + 0.3 \times \frac{|T_{\text{exp}} \cap T_{\text{out}}|}{|T_{\text{out}}|}$$
+
+**Factual Domain Coverage ($f_{\text{ner}}$).** Computes asymmetric recall/precision exclusively over named entity classes (organizations, technical parameters, location attributes, dates), ensuring that critical specific references are preserved across extensive skill rewrites. The recall-bias mirrors $f_{\text{f1}}$:
+
+$$f_{\text{ner}} = 0.7 \times \text{Recall}_{\text{NER}} + 0.3 \times \text{Precision}_{\text{NER}}$$
+
+**Sequential Sequence Alignment ($f_{\text{rouge}}$).** Enforces strict procedural ordering by extracting the Longest Common Subsequence (LCS) of tokens. For skills governing sequential state machines or linear multi-step procedures, any deviation in execution order sharply degrades $f_{\text{rouge}}$:
+
+$$f_{\text{rouge}} = \frac{2 \cdot \text{Recall}_{\text{LCS}} \cdot \text{Precision}_{\text{LCS}}}{\text{Recall}_{\text{LCS}} + \text{Precision}_{\text{LCS}}}$$
+
+**Paraphrastic Invariance ($f_{\text{sem}}$).** Projects outputs into a dense vector space using a unified embedding encoder and computes the normalized directional similarity. The $+1$ shift maps the $[-1,1]$ cosine range to $[0,1]$:
+
+$$f_{\text{sem}} = \frac{\cos(\mathbf{e}_{\text{expected}},\ \mathbf{e}_{\text{output}}) + 1}{2}$$
+
+**Relational Co-location ($f_{\text{graph}}$).** Constructs a conceptual graph $G = (V, E)$ for both target and hypothesis texts. Nodes $V$ consist of unigrams and domain-specific bigrams; directed edges $E$ are instantiated for concepts co-occurring within a sliding window of 5 tokens. The metric combines node-level F1 (weighted 0.6) with edge-level Jaccard similarity (weighted 0.4):
+
+$$f_{\text{graph}} = 0.6 \times f_{\text{f1}}(V) + 0.4 \times \frac{|E_{\text{expected}} \cap E_{\text{output}}|}{|E_{\text{expected}} \cup E_{\text{output}}|}$$
+
+**Syntactic Enforcement ($f_{\text{fmt}}$).** Evaluates structural output morphology by matching explicit document markers (Markdown headers, pipe tables, code blocks, valid JSON schemas). Operates orthogonally to textual content:
+
+$$f_{\text{fmt}} = \frac{|M_{\text{expected}} \cap M_{\text{output}}|}{|M_{\text{expected}}|}$$
+
+---
+
+### Appendix C — Runtime Deployment Patterns for §4.5 Priors
+
+Full operational deployment patterns for porting Level 1 and Level 2 Beta-Bernoulli posteriors into a live production routing layer. Referenced from §4.5.
+
+**Online Dynamic Skill Routing (Level 1 Posteriors).** When multiple evolved versions of a skill coexist in production, the Level 1 posterior distributions govern variant-level traffic allocation. For each incoming request, the production router draws $\theta_k \sim \text{Beta}(\alpha_k, \beta_k)$ for each available variant and routes to the maximizing arm. Live telemetry closes the loop: a successful session increments $\alpha_k$; a failure or dropout increments $\beta_k$. The optimization phase seeds the initial routing weights; the production environment continuously refines them.
+
+**Runtime Trace Discriminators and Failure Fallbacks (Level 2 Posteriors).** The Level 2 distributions track which input context types yield successful outcomes. Online, each incoming prompt is mapped to its nearest historical trace cluster $i$. When the cluster's posterior mean $\frac{\alpha_i}{\alpha_i + \beta_i}$ falls below an operator-defined risk threshold (default $0.40$), the runtime classifies the input as high-risk for the evolved skill and routes it to the conservative $S_{\text{baseline}}$ instead:
+
+```
+Incoming User Input
+       │
+       ▼
+[Context Vector Encoder] ──► Matches Cluster Registry (Trace i)
+                                         │
+                                         ▼
+                             Draw Sample: φ_i ~ Beta(α_i, β_i)
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 ▼ φ_i ≥ 0.40                                    ▼ φ_i < 0.40 (High Risk Zone)
+      [Execute Evolved Skill]                         [Activate Safe Baseline Fallback]
+```
+
+**Exploitation vs. Exploration in Production.** Operators can choose between two runtime postures. For strict production exploitation, the sampling step is replaced by the deterministic posterior mean $\mu_k = \frac{\alpha_k}{\alpha_k + \beta_k}$, routing all traffic to the highest-performing skill variant with zero variance. For controlled canary testing, the sampling is preserved: a highly successful skill with a tight distribution such as $\text{Beta}(95, 5)$ will naturally capture $\approx 95\%$ of production traffic while a new or volatile variant is automatically throttled to a safe canary allocation — with no manual percentage configuration required.
+
+---
+
+### Appendix D — Full Study Designs
+
+Complete study designs, metrics, and statistical success criteria for the eight validation studies described in §6. Empirical validation is pending.
+
+**Study 1: Baseline validation.**
+*Design:* A/B evaluation on ≥50 real task inputs per skill, comparing (a) unoptimized skills, (b) episodic-only skills (SER/TSER), (c) baseline GEPA-optimized skills, and (d) SAGE-optimized skills (full system).
+*Metrics:* Task success rate (binary human judgment), episodic retrieval count per conversation, and rubric regression rate.
+*Success criterion:* SAGE-optimized skills achieve mean task success rate ≥10 percentage points above unoptimized baseline with zero mean regression on any rubric dimension. Secondary: mean episodic retrieval count decreases for SAGE-optimized skills, confirming that parametric improvement reduces Episodic Compensation Load.
+
+**Study 2: Component ablations.**
+*Design:* Controlled ablations measuring the marginal contribution of each fitness metric (§4.3) and each holdout mode (§4.4) against bag-of-words + holistic baseline across five skill categories (procedural, advisory, entity-dense, structured-output, conversational).
+*Metrics:* Mean per-skill task success improvement, rubric regression rate, and holistic holdout acceptance rate.
+*Success criterion:* Each fitness metric outperforms bag-of-words on its target skill category with p < 0.05 (paired t-test). The no-regression constraint produces a statistically significant reduction in post-deployment rubric regressions compared to holistic-only evaluation.
+
+**Study 3: Trajectory vs. synthetic comparison.**
+*Design:* Direct comparison of trajectory mode vs. synthetic mode on the same holdout test set for skills with ≥100 real conversation logs.
+*Metrics:* Holdout improvement score, generalization gap (|holdout score − test score|), failure rate on unseen task variants.
+*Success criterion:* Trajectory mode achieves strictly lower generalization gap than synthetic mode for domain-specific skills.
+
+**Study 4: Adaptive weight diagnostics.**
+*Design:* Multi-run analysis over 10+ consecutive GEPA runs on the same skill, correlating final adaptive weights with human-judged dimension importance.
+*Metrics:* Pearson correlation between adaptive weight and human-judged importance; convergence rate.
+*Success criterion:* Final adaptive weights are positively correlated (r > 0.5) with human-judged dimension importance in ≥4 of 5 dimensions.
+
+**Study 5: Consolidation study.**
+*Design:* GEPA in trajectory mode on skills with ≥200 accumulated experience records; measure whether accepted skills allow episodic record reduction without regression.
+*Metrics:* Post-consolidation episodic retrieval count, task success rate before and after pruning.
+*Success criterion:* Accepted SAGE-evolved skills allow removal of ≥20% of episodic records without measurable task success regression (<2 percentage points).
+
+**Study 6: SAGE vs. directed optimization benchmark.**
+*Design:* Controlled comparison of SAGE against SkillOpt-style directed local optimization across five task categories, with equal total LLM call budgets.
+*Metrics:* Final task success rate, iterations to first accepted improvement, post-acceptance regression rate, structural change magnitude (incremental vs. architectural).
+*Success criterion:* SAGE produces higher structural change magnitude and task success rates for procedural and structured-output skill classes; directed optimization achieves lower iteration count to first improvement for advisory and conversational classes. Neither paradigm dominates across all five categories, validating the complementarity hypothesis.
+
+**Study 7: Bayesian acceptance gate vs. PACE e-process testing.**
+*Design:* Head-to-head comparison of SAGE's Monte Carlo Bayesian gate ($M = 100$, $P \ge 0.75$) against PACE's anytime-valid e-process testing-by-betting [Shawn, 2026] on the same holdout sets across five skill categories. Both gates receive identical candidate populations from the same GEPA optimization runs; the comparison is fully controlled for everything except the acceptance decision mechanism.
+*Metrics:* False-acceptance rate (accepted candidates showing regression on a blinded human-judged test set held out from both gates), false-rejection rate (rejected candidates a blinded human judge rates as superior to the baseline), mean evaluation calls consumed per gate decision, and fraction of accepted candidates yielding measurable production improvement at 30-day follow-up.
+*Success criterion:* If PACE's e-process gate achieves a statistically significantly lower false-acceptance rate at equal or lower false-rejection rate across five skill categories (paired Wilcoxon signed-rank, p < 0.05), the Bayesian gate should be replaced in SAGE's production configuration. If the Bayesian gate achieves comparable false-acceptance rates at lower mean evaluation call cost, it is validated as the appropriate default for enterprise deployment contexts where evaluation budgets are constrained.
+
+**Study 8: Contextual Bayesian Router vs. static matrix routing.**
+*Design:* Longitudinal A/B comparison of pure static-matrix routing (Phase 0 only) against the full five-component Contextual Bayesian Router (Phases 0–3) in a production deployment over a 90-day window, measuring routing accuracy improvement as live execution feedback accumulates in Phase 3.
+*Metrics:* Fraction of queries routed to the highest-performing skill (measured by post-execution human judgment), mean soft reward received, Phase 3 state stability (convergence of per-skill context embeddings), and cold-start performance gap (routing accuracy in the first 7 days vs. days 60–90).
+*Success criterion:* Phase 3 routing accuracy exceeds Phase 0 by ≥5 percentage points at day 60, confirming that live execution feedback provides a signal beyond the static offline matrix. Secondary: the per-skill context embeddings converge to stable vectors (cosine similarity between consecutive 7-day windows ≥ 0.85) within 30 days of deployment.
+
+---
+
+### Appendix E — Three-Layer Production Stack (Figure E.1)
+
+Annotated diagram of the three-layer agent self-improvement architecture described in §7. Each layer operates on the same skill artifact; no layer substitutes for another — all are additive.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  LAYER 3 — SAGE  (periodic structural revision: monthly / quarterly)     │
+│  Rewrites skill body text S using evolutionary search + fitness signals  │
+│  Addresses: ∂Q/∂S  |  Cost: ~500 LLM calls/run  |  Mode: offline batch  │
+├──────────────────────────────────────────────────────────────────────────┤
+│  LAYER 2 — SkillOpt  (continuous directed maintenance: per-epoch)        │
+│  Applies bounded edits guided by execution trajectory failures           │
+│  Addresses: ∂Q/∂S  |  Cost: lightweight  |  Mode: continuous online      │
+├──────────────────────────────────────────────────────────────────────────┤
+│  LAYER 1 — SER / TSER / EXS  (reactive episodic: per conversation)       │
+│  Appends failure records; retrieved at inference time                    │
+│  Addresses: ∂Q/∂R  |  Cost: minimal  |  Mode: real-time                  │
+└──────────────────────────────────────────────────────────────────────────┘
+             ↑ All three layers operate on the same skill artifact
+             ↑ No layer substitutes for another; all are additive
+```
+
+```mermaid
+flowchart TB
+    subgraph L3["LAYER 3 — SAGE  (periodic structural revision: monthly / quarterly)"]
+        L3D["Rewrites skill body text S via evolutionary search + fitness signals\n∂Q/∂S  |  ~500 LLM calls/run  |  offline batch"]
+    end
+    subgraph L2["LAYER 2 — SkillOpt  (continuous directed maintenance: per-epoch)"]
+        L2D["Applies bounded edits guided by execution trajectory failures\n∂Q/∂S  |  lightweight  |  continuous online"]
+    end
+    subgraph L1["LAYER 1 — SER / TSER / EXS  (reactive episodic: per conversation)"]
+        L1D["Appends failure records; retrieved at inference time\n∂Q/∂R  |  minimal cost  |  real-time"]
+    end
+    L3 --> L2 --> L1
+    N["All three layers operate on the same skill artifact\nNo layer substitutes for another — all are additive"]
+    L1 --- N
+    style N fill:#f5f5f5,stroke:#aaa,stroke-dasharray:5 5
+```

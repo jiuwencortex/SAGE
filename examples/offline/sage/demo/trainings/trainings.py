@@ -120,7 +120,6 @@ class DemoTrainings:
                         oracle_data_dir=getattr(self._config, "oracle_data_dir", None),
                     )
 
-                    self._record_to_persistent_scheduler(params.skill_name, _m)
                     _mode_scores.append(_m.get("evolved_score", 0.0))
                     _last_metrics = _m
                     _last_out = _out_dir
@@ -164,6 +163,21 @@ class DemoTrainings:
                     scores[run_key] = mode_scores
                     metrics[run_key] = mode_metrics
                     runs.append((run_key, last_out))
+
+        # Record once per scenario to avoid inflating Thompson arms when
+        # multiple fitness metrics or n_runs > 1 produce multiple passes.
+        # Use the mean improvement across all completed mode×metric combinations.
+        if self._persistent_scheduler is not None and metrics:
+            improvements = [
+                float(m["improvement"])
+                for m in metrics.values()
+                if m and "improvement" in m
+            ]
+            if improvements:
+                mean_imp = sum(improvements) / len(improvements)
+                self._record_to_persistent_scheduler(
+                    params.skill_name, {"improvement": mean_imp}
+                )
 
         return DemoTrainingsResults(runs=runs, scores=scores, metrics=metrics)
 
@@ -214,7 +228,6 @@ class DemoTrainings:
                 run_index=i,
                 console=console,
             )
-            self._record_to_persistent_scheduler(params.skill_name, m)
             mode_scores.append(m.get("evolved_score", 0.0))
             last_metrics = m
             last_out = output_dir

@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 
@@ -67,9 +67,6 @@ class ContextualMatrix:
 
         # List of {"vec": np.ndarray, "skill": str, "reward": float}
         self._entries: List[Dict] = []
-        # Pre-computed numpy matrix of vecs (rebuilt lazily)
-        self._vec_matrix: Optional[np.ndarray] = None
-        self._dirty = False
 
         self._load()
 
@@ -101,8 +98,6 @@ class ContextualMatrix:
         if len(self._entries) > self._max_entries:
             self._entries = self._entries[-self._max_entries:]
 
-        self._vec_matrix = None   # invalidate cached matrix
-        self._dirty = True
         self._save()
 
     # ── Query ─────────────────────────────────────────────────────────────────

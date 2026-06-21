@@ -82,6 +82,9 @@ class SkillContextStore:
         reward = max(0.0, min(1.0, float(reward)))
         rate   = self._ewa_rate * reward          # scale by reward magnitude
 
+        if rate == 0.0:
+            return  # zero reward → nothing to learn; skip I/O
+
         if skill_name in self._embeddings:
             existing = self._embeddings[skill_name]
             updated  = (1.0 - rate) * existing + rate * query_vec

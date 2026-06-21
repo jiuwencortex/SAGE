@@ -250,9 +250,6 @@ class SkillRecommender:
                 if self._context_store is not None:  # Phase 3
                     components["context_match"] = (self._w_context_match, context_match)
                 if online_collab is not None:  # Phase 3
-                    # Blend static + online collaborative: online replaces 30 % of static
-                    blended_collab = 0.7 * collaborative_score + 0.3 * online_collab
-                    components["collaborative"] = (self._w_collaborative, blended_collab)
                     components["online_collaborative"] = (self._w_online_collab, online_collab)
 
                 total_w = sum(w for w, _ in components.values())

@@ -55,7 +55,7 @@ class _BetaArm:
         if reward > 0.5:
             self.last_success_at = time.time()
 
-    # ── Decay toward prior (Phase 3) ──────────────────────────────────────────
+    # ── Decay toward prior (Phase 2) ──────────────────────────────────────────
 
     def decay(self, rate: float = 0.99) -> None:
         """Shrink α and β back toward the uninformative prior Beta(1, 1).

@@ -41,7 +41,6 @@ class Embedder:
         self._corpus: list[str] = []
 
         if method == "tfidf":
-            from sklearn.feature_extraction.text import TfidfVectorizer
             self._vectorizer = TfidfVectorizer(
                 ngram_range=(1, 2),
                 max_features=10_000,
@@ -146,7 +145,7 @@ class Embedder:
 
         if self._method == "tfidf":
             vec = self._vectorizer.transform([query])
-            dense = np.asarray(vec.todense(), dtype=np.float32).flatten()
+            dense = vec.toarray().astype(np.float32).flatten()
             norm = np.linalg.norm(dense)
             if norm > 0:
                 dense = dense / norm

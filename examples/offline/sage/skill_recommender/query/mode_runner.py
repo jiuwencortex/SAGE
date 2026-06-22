@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from ..recommender import SkillRecommender
 from ..recommender_builder import build_recommender
-from ..skill_context_store import SkillContextStore
-from ..contextual_matrix import ContextualMatrix
+from ..embedder import Embedder
+from .skill_context_store import SkillContextStore
+from .contextual_matrix import ContextualMatrix
+from .enhanced_recommender import EnhancedRecommender
 from .results_printer import _print_query_results, _print_skills
 
 
@@ -34,14 +37,10 @@ def _run_query(args: argparse.Namespace) -> None:
         contextual_matrix = ContextualMatrix(state_path=ctx_dir / "contextual_matrix.json")
 
     try:
-        recommender = build_recommender(
+        base = build_recommender(
             oracle_dir=oracle_dir,
             variant=args.variant,
             embedder_method=args.embedder,
-            ts_state_path=ts_state_path,
-            freshness_lambda=freshness_lambda,
-            context_store=context_store,
-            contextual_matrix=contextual_matrix,
         )
     except FileNotFoundError as exc:
         sys.exit(
@@ -56,16 +55,23 @@ def _run_query(args: argparse.Namespace) -> None:
         )
 
     if cache_path is not None:
-        from ..recommender_similarities_computer import Embedder
         if cache_path.exists():
             try:
-                recommender._embedder = Embedder.load(cache_path)
+                base._embedder = Embedder.load(cache_path)
                 print(f"  Embedder cache   : loaded from {cache_path}")
             except Exception as exc:
                 print(f"  [WARN] Could not load embedder cache ({exc}); using fresh model.")
         else:
-            recommender._embedder.save(cache_path)
+            base._embedder.save(cache_path)
             print(f"  Embedder cache   : saved to {cache_path}")
+
+    recommender: SkillRecommender | EnhancedRecommender = EnhancedRecommender(
+        base=base,
+        ts_state_path=ts_state_path,
+        freshness_lambda=freshness_lambda,
+        context_store=context_store,
+        contextual_matrix=contextual_matrix,
+    )
 
     print(f"  Loaded matrix: {recommender.n_examples} rows · {len(recommender.skills)} skill(s) · "
           f"{len(recommender.metrics)} metric(s)")

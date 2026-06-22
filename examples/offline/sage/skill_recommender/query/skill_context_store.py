@@ -28,14 +28,15 @@ Each list is the L2-normalised running context embedding for that skill.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 
+from ._base_persistent_store import PersistentMixin
 
-class SkillContextStore:
+
+class SkillContextStore(PersistentMixin):
     """Maintains a per-skill running embedding updated from online executions.
 
     Parameters
@@ -129,19 +130,13 @@ class SkillContextStore:
 
     def _save(self) -> None:
         data = {name: vec.tolist() for name, vec in self._embeddings.items()}
-        tmp  = self._state_path.with_suffix(".tmp")
-        self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(data))
-        tmp.rename(self._state_path)
+        self._save_json(data, self._state_path)
 
     def _load(self) -> None:
-        if not self._state_path.exists():
+        data = self._load_json(self._state_path)
+        if data is None:
             return
-        try:
-            data = json.loads(self._state_path.read_text())
-            self._embeddings = {
-                k: np.array(v, dtype=np.float32)
-                for k, v in data.items()
-            }
-        except Exception:
-            pass
+        self._embeddings = {
+            k: np.array(v, dtype=np.float32)
+            for k, v in data.items()
+        }

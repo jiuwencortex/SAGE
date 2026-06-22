@@ -34,14 +34,15 @@ it is ≈ 12 MB.  Set ``max_entries`` lower if disk space is a concern.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
 
+from ._base_persistent_store import PersistentMixin
 
-class ContextualMatrix:
+
+class ContextualMatrix(PersistentMixin):
     """Online-updated M[prompt_embedding, skill] = utility score.
 
     Parameters
@@ -160,23 +161,17 @@ class ContextualMatrix:
                 for e in self._entries
             ]
         }
-        tmp = self._state_path.with_suffix(".tmp")
-        self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(payload))
-        tmp.rename(self._state_path)
+        self._save_json(payload, self._state_path)
 
     def _load(self) -> None:
-        if not self._state_path.exists():
+        data = self._load_json(self._state_path)
+        if data is None:
             return
-        try:
-            data = json.loads(self._state_path.read_text())
-            self._entries = [
-                {
-                    "vec":    np.array(e["vec"], dtype=np.float32),
-                    "skill":  e["skill"],
-                    "reward": float(e["reward"]),
-                }
-                for e in data.get("entries", [])
-            ]
-        except Exception:
-            pass
+        self._entries = [
+            {
+                "vec":    np.array(e["vec"], dtype=np.float32),
+                "skill":  e["skill"],
+                "reward": float(e["reward"]),
+            }
+            for e in data.get("entries", [])
+        ]
